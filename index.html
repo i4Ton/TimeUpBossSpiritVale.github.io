@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TimeUpBoss — จับเวลา Kill Boss SpiritVale</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">⏱️</span>
+      <div>
+        <h1>TimeUpBoss</h1>
+        <p class="sub">จับเวลา Kill Boss — SpiritVale</p>
+      </div>
+    </div>
+    <div class="head-right">
+      <div id="roomMeta" class="room-meta hidden">
+        <span class="rm-name" id="rmName">—</span>
+        <span class="rm-code">รหัส: <b id="rmCode">------</b></span>
+        <button id="copyLink" class="ghost" type="button">📋 คัดลอกลิงก์</button>
+        <button id="leaveRoom" class="ghost danger" type="button">ออก</button>
+      </div>
+      <div class="clock" id="liveClock">--:--:--</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== LOBBY ===== -->
+    <section id="lobby" class="panel">
+      <h2>เข้าห้องปาร์ตี้</h2>
+      <div class="lobby-grid">
+        <form id="createForm">
+          <h3>สร้างห้องใหม่</h3>
+          <label><span>ชื่อห้อง</span>
+            <input type="text" id="createRoomName" maxlength="40" placeholder="เช่น ปาร์ตี้ล่า Echo" required />
+          </label>
+          <label><span>ชื่อตัวละครคุณ</span>
+            <input type="text" id="createCharName" maxlength="24" required />
+          </label>
+          <button type="submit" class="primary">สร้างห้อง</button>
+        </form>
+
+        <form id="joinForm">
+          <h3>เข้าด้วยรหัส</h3>
+          <label><span>รหัสห้อง (6 ตัว)</span>
+            <input type="text" id="joinCode" maxlength="6" autocapitalize="characters" placeholder="ABC123" required />
+          </label>
+          <label><span>ชื่อตัวละครคุณ</span>
+            <input type="text" id="joinCharName" maxlength="24" required />
+          </label>
+          <button type="submit" class="primary">เข้าห้อง</button>
+        </form>
+      </div>
+      <p id="lobbyMsg" class="lobby-msg"></p>
+    </section>
+
+    <!-- ===== NAME GATE (เข้าจากลิงก์) ===== -->
+    <section id="nameGate" class="panel hidden">
+      <h2>เข้าห้อง <span id="gateRoomName"></span></h2>
+      <form id="nameForm" class="boss-form">
+        <input type="text" id="gateCharName" maxlength="24" placeholder="ชื่อตัวละครคุณ" required />
+        <button type="submit" class="primary">เข้าห้อง</button>
+        <button type="button" id="gateBack" class="ghost">ย้อนกลับ</button>
+      </form>
+      <p id="gateMsg" class="lobby-msg"></p>
+    </section>
+
+    <!-- ===== ROOM APP ===== -->
+    <div id="room" class="hidden">
+      <section class="panel members-panel">
+        <h2>สมาชิกในห้อง (<span id="memberCount">0</span>)</h2>
+        <ul id="memberList" class="member-list"></ul>
+      </section>
+
+      <section class="panel form-panel">
+        <h2>บันทึกการฆ่าบอส</h2>
+        <form id="killForm">
+          <div class="grid">
+            <label>
+              <span>Channel (CH 1–3)</span>
+              <select id="chSelect" required></select>
+            </label>
+
+            <label>
+              <span>บอสที่ตี</span>
+              <select id="bossSelect" required></select>
+            </label>
+
+            <label>
+              <span>โหมดเวลา</span>
+              <div class="radio-row">
+                <label class="radio"><input type="radio" name="timeMode" value="now" checked /> ตามเครื่องคอม</label>
+                <label class="radio"><input type="radio" name="timeMode" value="manual" /> ใส่เวลาเอง</label>
+              </div>
+            </label>
+
+            <label id="manualWrap" class="hidden">
+              <span>เวลาที่บอสตาย</span>
+              <input type="datetime-local" id="manualTime" step="1" />
+            </label>
+
+            <label>
+              <span>Respawn (นาที)</span>
+              <input type="number" id="respawnMin" min="1" step="1" required />
+            </label>
+
+            <label>
+              <span>หมายเหตุ (ไม่บังคับ)</span>
+              <input type="text" id="note" maxlength="60" placeholder="เช่น จุดบน" />
+            </label>
+          </div>
+
+          <button type="submit" class="primary">+ บันทึกเวลา</button>
+        </form>
+      </section>
+
+      <section class="panel list-panel">
+        <div class="list-head">
+          <h2>ตารางเวลาเกิดบอส</h2>
+          <div class="list-actions">
+            <button id="notifyBtn" class="ghost" type="button">🔔 เปิดแจ้งเตือน</button>
+            <button id="clearExpired" class="ghost" type="button">ล้างที่เกิดแล้ว</button>
+            <button id="clearAll" class="ghost danger" type="button">ล้างทั้งหมด</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="recordTable">
+            <thead>
+              <tr>
+                <th>CH</th>
+                <th>บอส</th>
+                <th>ตายเมื่อ</th>
+                <th>เกิดอีกครั้ง</th>
+                <th>นับถอยหลัง</th>
+                <th>สถานะ</th>
+                <th>โดย</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+          </table>
+          <p id="emptyMsg" class="empty">ยังไม่มีข้อมูล — บันทึกการฆ่าบอสด้านบน</p>
+        </div>
+      </section>
+
+      <section class="panel boss-panel">
+        <details>
+          <summary>จัดการรายชื่อบอส / เวลา Respawn (ทั้งห้องเห็นตรงกัน)</summary>
+          <form id="bossForm" class="boss-form">
+            <input type="text" id="newBossName" placeholder="ชื่อบอส" maxlength="40" required />
+            <input type="number" id="newBossMin" placeholder="นาที" min="1" step="1" required />
+            <button type="submit" class="primary">เพิ่ม</button>
+            <button type="button" id="resetBosses" class="ghost">คืนค่าเริ่มต้น</button>
+          </form>
+          <ul id="bossList" class="boss-list"></ul>
+        </details>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <span>ข้อมูลห้อง sync ผ่าน Firebase — แชร์ลิงก์/รหัสให้เพื่อนเข้าห้องเดียวกัน</span>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
