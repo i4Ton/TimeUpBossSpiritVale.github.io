@@ -116,7 +116,20 @@ function touchRoom(code) {
   if (code) updateDoc(roomRef(code), { lastActivity: Date.now() }).catch(() => {});
 }
 
-// ลบห้องที่เงียบเกิน ROOM_TTL_MS (รวม subcollection records/members)
+// ลบห้อง + subcollection records/members ทั้งหมด
+async function deleteRoom(code) {
+  for (const sub of ["records", "members"]) {
+    const ss = await getDocs(collection(db, "rooms", code, sub));
+    if (!ss.empty) {
+      const b = writeBatch(db);
+      ss.forEach((x) => b.delete(x.ref));
+      await b.commit();
+    }
+  }
+  await deleteDoc(roomRef(code));
+}
+
+// ลบห้องที่เงียบเกิน ROOM_TTL_MS
 async function sweepOldRooms() {
   try {
     const cutoff = Date.now() - ROOM_TTL_MS;
@@ -125,15 +138,7 @@ async function sweepOldRooms() {
       const d = rd.data();
       const last = d.lastActivity || d.createdAt || 0;
       if (last >= cutoff) continue;
-      for (const sub of ["records", "members"]) {
-        const ss = await getDocs(collection(db, "rooms", rd.id, sub));
-        if (!ss.empty) {
-          const b = writeBatch(db);
-          ss.forEach((x) => b.delete(x.ref));
-          await b.commit();
-        }
-      }
-      await deleteDoc(rd.ref);
+      await deleteRoom(rd.id);
       console.info("swept room", rd.id);
     }
   } catch (e) {
@@ -272,9 +277,26 @@ function rulesError(where, err) {
   el("rmName").textContent = "⚠️ อ่านข้อมูลห้องไม่ได้ — ตรวจ Firestore Rules";
 }
 
-function leaveRoom() {
-  if (state.code) deleteDoc(memberRef(state.code, CID)).catch(() => {});
+// ออกห้อง — เอาตัวเองออก ห้องยังอยู่
+async function leaveRoom() {
+  const code = state.code;
   teardown();
+  if (code) {
+    try { await deleteDoc(memberRef(code, CID)); }
+    catch (e) { console.warn("leaveRoom failed", e); }
+  }
+  history.pushState({}, "", location.pathname);
+  boot();
+}
+
+// ลบห้อง — ลบทั้งห้อง + records + members
+async function destroyRoom() {
+  const code = state.code;
+  if (!code) return;
+  if (!confirm("ลบห้องนี้ทิ้งถาวร? สมาชิกทุกคนจะหลุด")) return;
+  teardown();
+  try { await deleteRoom(code); }
+  catch (e) { alert("ลบห้องไม่สำเร็จ: " + e.message); }
   history.pushState({}, "", location.pathname);
   boot();
 }
@@ -289,6 +311,7 @@ function teardown() {
   el("roomMeta").classList.add("hidden");
 }
 el("leaveRoom").addEventListener("click", leaveRoom);
+el("deleteRoom").addEventListener("click", destroyRoom);
 window.addEventListener("beforeunload", () => {
   if (state.code) deleteDoc(memberRef(state.code, CID)).catch(() => {});
 });
