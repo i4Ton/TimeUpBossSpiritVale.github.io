@@ -334,36 +334,54 @@ function show(id) {
   ["lobby", "nameGate", "room"].forEach((s) => el(s).classList.toggle("hidden", s !== id));
 }
 
-/* ---------- selects ---------- */
+/* ---------- selects (button groups) ---------- */
+function groupValue(id) { return el(id).dataset.value || ""; }
+
+function selectChip(group, value) {
+  group.dataset.value = value;
+  group.querySelectorAll(".chip").forEach((c) => {
+    c.classList.toggle("active", c.dataset.value === value);
+  });
+}
+function makeChip(group, value, text) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "chip";
+  b.dataset.value = value;
+  b.textContent = text;
+  b.addEventListener("click", () => {
+    selectChip(group, value);
+    if (group.id === "bossSelect") syncRespawnFromBoss();
+  });
+  return b;
+}
+
 function fillChannels() {
-  const sel = el("chSelect");
-  if (sel.options.length) return;
+  const box = el("chSelect");
+  if (box.dataset.ready) return;
+  box.dataset.ready = "1";
   for (let i = 1; i <= CH_COUNT; i++) {
-    const o = document.createElement("option");
-    o.value = String(i);
-    o.textContent = `CH ${i}`;
-    sel.appendChild(o);
+    box.appendChild(makeChip(box, String(i), `CH ${i}`));
   }
+  selectChip(box, "1");
 }
 function fillBosses() {
-  const sel = el("bossSelect");
-  const prev = sel.value;
-  sel.innerHTML = "";
+  const box = el("bossSelect");
+  const prev = box.dataset.value;
+  box.innerHTML = "";
   state.bosses.forEach((b) => {
-    const o = document.createElement("option");
-    o.value = b.name;
-    o.textContent = `${b.name} (${b.min}m)`;
-    o.dataset.min = b.min;
-    sel.appendChild(o);
+    const chip = makeChip(box, b.name, `${b.name} (${b.min}m)`);
+    chip.dataset.min = b.min;
+    box.appendChild(chip);
   });
-  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  const keep = state.bosses.some((b) => b.name === prev) ? prev : (state.bosses[0]?.name || "");
+  selectChip(box, keep);
   syncRespawnFromBoss();
 }
 function syncRespawnFromBoss() {
-  const opt = el("bossSelect").selectedOptions[0];
-  if (opt) el("respawnMin").value = opt.dataset.min;
+  const active = el("bossSelect").querySelector(".chip.active");
+  if (active && active.dataset.min) el("respawnMin").value = active.dataset.min;
 }
-el("bossSelect").addEventListener("change", syncRespawnFromBoss);
 
 /* ---------- members ---------- */
 function renderMembers() {
@@ -452,11 +470,16 @@ el("killForm").addEventListener("submit", async (e) => {
   const mins = Number(el("respawnMin").value);
   if (!mins || mins <= 0) { alert("ใส่เวลา respawn เป็นนาที"); return; }
 
+  const ch = groupValue("chSelect");
+  const boss = groupValue("bossSelect");
+  if (!ch) { alert("เลือก Channel"); return; }
+  if (!boss) { alert("เลือกบอส"); return; }
+
   const by = lsGet(charKey(state.code)) || "?";
   try {
     await addDoc(recordsCol(state.code), {
-      ch: Number(el("chSelect").value),
-      boss: el("bossSelect").value,
+      ch: Number(ch),
+      boss,
       deathTs,
       respawnMin: mins,
       respawnTs: deathTs + mins * 60000,
