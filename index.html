@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TimeUpBoss — จับเวลา Kill Boss SpiritVale</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <header class="topbar">
@@ -78,15 +78,15 @@
       <section class="panel form-panel">
         <h2>บันทึกการฆ่าบอส</h2>
         <form id="killForm">
+          <div class="field field-boss">
+            <span>บอสที่ตี</span>
+            <div id="bossSelect" class="chip-group chip-grid" role="group" aria-label="เลือกบอส"></div>
+          </div>
+
           <div class="grid">
             <div class="field">
               <span>Channel (CH 1–3)</span>
               <div id="chSelect" class="chip-group" role="group" aria-label="เลือก Channel"></div>
-            </div>
-
-            <div class="field">
-              <span>บอสที่ตี</span>
-              <div id="bossSelect" class="chip-group" role="group" aria-label="เลือกบอส"></div>
             </div>
 
             <label>
@@ -166,6 +166,6 @@
     <span>ข้อมูลห้อง sync ผ่าน Firebase — แชร์ลิงก์/รหัสให้เพื่อนเข้าห้องเดียวกัน</span>
   </footer>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=3"></script>
 </body>
 </html>
